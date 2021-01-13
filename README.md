@@ -1,7 +1,7 @@
 
 ## Patches Description
 
-This is an application of the blur-deblur teams (name not final)
+This is an application of the blur-deblur teams
 neural network (NN) focused deblur algorithms on heterogenous images.
 Most deblur algorithms assume an entire image is blurred. This project
 aims to deblur portions of an image. This is done in multiple steps.
@@ -9,22 +9,24 @@ aims to deblur portions of an image. This is done in multiple steps.
 Preprocess
 
 * Take a pristine image
-* Create patches of blur using the fourier transform of the image and a gaussian mask
+* Create patches of blur using the Fourier transform of the image and a gaussian mask
 
 Task
 
 * Sample random locations in the heterogenous image
-* Use a single/suite-of patch(s) to classify if the patch is blurred
-* If positive, apply NN to deblur, re-insert into the image
+* Create a patch from a sampled location
+* Classify if the patch is blurred
+* If positive, apply NN to deblur then re-insert into the image
 * Repeat for all samples
 
 
-## Preprocess
+## Apply blurs
 
 The function blur within the class PicOperator takes in a rectangle as a patch,
-converts it into fourier space, generates a gaussian mask of the patches shape,
-convolves/multiplies the two, followede by transforming back into normal space.
-Applied to each RGB channel. Then inserted back into the image.
+converts it into Fourier space, generates a gaussian mask of the patches shape,
+convolves/multiplies the two, followed by transforming back into normal space.
+Applied to each RGB channel. Then inserted back into the image. This is done in
+select locations in the image.
 
 A pristine image
 
@@ -32,64 +34,12 @@ A pristine image
 
 A heterogeneous/blurred image
 
-![A heterogenous image](output/DSC00462_blurred.png "heterogenous/blurred image")
-DSC00462_blurred.png
+![A heterogenous image](output/img_de-blurred_blocks_result_DSC00462.png "heterogenous/blurred image")
 
-## Probability of patch coverage
-
-Given: image size, patch size
-
-Todo: use probability to estimate upper bound on number of patches to cover an image
-
-Once we have a certain number of patches to sample from, we can generate that number
-to classify, deblur, and postprocess.
-
-There is quite a bit of probability work in this field. I would say it is a polygon covering
-problem. This can be bounded using epsilon-nets and VC-dimension. My probability is weak, so
-I hope my understanding is correct. Before that lets apply some simple lower and upper bounds.
-Additionally my notation is suspect. R is the rectangle we wish to cover, eg our image, say
-4000 x 6000. R' is a patch, say 100 x 100. N are the number of patches we need to to cover R.
-A(R) is the area of R. 
-
-### lower bound
-
-Given a rectangle R of size n by m, and a fixed-size patch R' of size x by y, where x < n and
-y < m, the minimum number of R' to cover R would be disjoint sets aligned along their borders.
-One can compute this using area's:
-
-<img src="https://latex.codecogs.com/svg.latex?\Omega(N)&space;=&space;\frac{A(R)}{A(R')}" title="\Omega(N) = \frac{A(R)}{A(R')}" />
-
-For example, ff R = 16 x 16 and R' is 4 x 4, then we need (16 * 16)/(4 * 4) = 16 patches
-
-So far, not so bad.
-
-### upper bound
-
-Given the same R and R' as before, what are the maximum number of R' to cover R? Assume every R'
-is offset from the next by one pixel. We would need a patch for nearly every pixel then.
-
-<img src="https://latex.codecogs.com/svg.latex?O(N)&space;=&space;(m-x)(n-y)" title="O(N) = (m-x)(n-y)" />
-
-For example, R = 16 x 16 and R' is 4 x 4, we would need (16 - 4)**2 = 144 patches
-
-### Experimental setup
-
-In my setup R = 4000 x 6000 and R' = 100 x 100, this gives
-<img src="https://latex.codecogs.com/svg.latex?\Omega(N)&space;=&space;2400&space;\text{&space;and&space;}&space;O(N)&space;=&space;2.3*10^6" title="\Omega(N) = 2400 \text{ and } O(N) = 2.3*10^6" />
-
-This is a very large range. Are there ways to reduce our upper bound? Let's investigate.
-
-### Covering number
-
-The upper bound proposed is simply unrealistic. The lower bound is too optimistic.
-Is there a way to find a good middle ground? With covering numbers I think there is.
-
-A covering number is the number of sperical balls of a fixed size to completely cover a
-given space; overlaps are allowed.
 
 ## Classify if an image is blurred
 
-opencv has a mostly straightforward classifier. We can calculate the laplacian of an
+Opencv has a mostly straightforward classifier. We can calculate the laplacian of an
 image. From my reading, a discrete laplacian is the sum of the second derivatives in a
 3 by 3 convolution for each pixel. This is useful to tell us edges and motion of the
 image. If an image is in focus, there should be many edges, resulting in a higher variance.
@@ -102,15 +52,75 @@ how I wanted to, so I normalized in the 'normal' way:
 followed by a 0.25 cutoff. This works on a few of the scenic images I have. So,
 good for now.
 
-## Deblur
+## Probability of patch coverage
 
-Pass the blurred patch to a trained algorithm, recieve the deblurred patch.
+Given: image size, patch size
+
+This was the most interesting part of the project for me.
+
+To start off lets apply some simple lower and upper bounds to our project.
+Let us say that R is the rectangle we wish to cover, say 4000 x 6000.
+R' is a patch, say 100 x 100. N are the number of patches we need to to cover R.
+A(R) is the area of R.
+
+### lower bound
+
+Given a rectangle R of size n by m, and a fixed-size patch R' of size x by y, where x < n and
+y < m, the minimum number of R' to cover R would be disjoint sets aligned along their borders.
+One can compute this using area's:
+
+<img src="https://latex.codecogs.com/svg.latex?\Omega(N)&space;=&space;\frac{A(R)}{A(R')}" title="\Omega(N) = \frac{A(R)}{A(R')}" />
+
+For example, if R = 4000 x 6000 and R' is 100 x 100, then we need 2,400 patches.
+
+This would be too optimistic I thought. As the probability that if we sampled 2,400
+times, they would all align in the way just described, seemed quite unlikely.
+
+### upper bound
+
+Given the same R and R' as before, what are the maximum number of R' to cover R? Assume every R'
+is offset from the next by one pixel. We would need a patch for nearly every pixel then.
+
+<img src="https://latex.codecogs.com/svg.latex?O(N)&space;=&space;(m-x)(n-y)" title="O(N) = (m-x)(n-y)" />
+
+For example, R = 4000 x 6000 and R' is 100 x 100, we would need 23 million patches. This is
+quite large and I thought I could do better.
+
+### Covering number
+
+The upper bound proposed is simply unrealistic. The lower bound is too optimistic.
+Is there a way to find a good middle ground? With covering numbers I think there is.
+
+A covering number is the number of sperical balls of a fixed size to completely cover a
+given space; overlaps are allowed. We want to solve the equation below.
+Definitions:
+ - <img src="https://latex.codecogs.com/svg.latex?N^{ext}_{r}(K)" title="N^{ext}_{r}(K)" /> = External covering number
+ - K = Euclidian space containing a set of vectors/balls
+ - k = length (norm) of any vector in K is at most k
+ - d = dimensional space, 2
+ - r = radius of fixed size ball
+
+<img src="https://latex.codecogs.com/svg.latex?N^{ext}_{r}(K)&space;\leq&space;(\frac{2k&space;\sqrt{d}}{r})^d" title="N^{ext}_{r}(K) \leq (\frac{2k \sqrt{d}}{r})^d" />
+
+Now with a bit of imagination, if we say the diagonal of our image is k (the largest vector within K), d is most
+definitely 2, and r is the diagonal of our cover image divided by two (to get a radius), then we have everything we
+need to calculate a covering number! In my example this becomes 83,200.
 
 
 ## Postprocess
 
 Simply apply (best?) deblurred patch back into image. Best is questionable,
 best could be first patch that overlaps the most blurred portion and deblurs it, or
-two patches that are partially blurred that together deblur the image more. 
+two patches that are partially blurred that together deblur the image more. I chose
+for a real time update in the image, as I wasn't convinced a more sophisticated
+method would do any better.
 
-Chose to 
+## Deblur
+
+Now that we know how many patches to sample, have a way to classify it, and run it through
+a deblurring algorithm, we can finally run the program! Below is the result. One can see
+artifacts from the algorithm. At least to me, it appears the regions that are explicitly
+blurred were targeted more, though we already know it's not the best. Also It's apparent
+the deblur algorithm could be improved. To have made it this far in only two weeks seems commendable.
+
+![final image](output/img_de-blurred_covering_DSC00462.png "final 'deblurred' image")

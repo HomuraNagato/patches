@@ -7,7 +7,7 @@ from skimage import restoration
 from scipy.signal.signaltools import wiener
 
 import sys
-from main import main, parse_args
+from deblur_team.main import main, parse_args
 
 import json
 import h5py
@@ -207,7 +207,6 @@ class PicOperator(object):
 
     def rademacher_bound(self, r):
         # c = k?   m = r?
-        # this is find, this is actually, relatively, a large number
         # examples have it less than 1?
         c = np.sqrt(self.width**2 + self.height**2)
         d = 2
