@@ -54,8 +54,6 @@ good for now.
 
 ## Probability of patch coverage
 
-Given: image size, patch size
-
 This was the most interesting part of the project for me.
 
 To start off lets apply some simple lower and upper bounds to our project.
@@ -97,7 +95,7 @@ Definitions:
  - <img src="https://latex.codecogs.com/svg.latex?N^{ext}_{r}(K)" title="N^{ext}_{r}(K)" /> = External covering number
  - K = Euclidian space containing a set of vectors/balls
  - k = length (norm) of any vector in K is at most k
- - d = dimensional space, 2
+ - d = dimensional space
  - r = radius of fixed size ball
 
 <img src="https://latex.codecogs.com/svg.latex?N^{ext}_{r}(K)&space;\leq&space;(\frac{2k&space;\sqrt{d}}{r})^d" title="N^{ext}_{r}(K) \leq (\frac{2k \sqrt{d}}{r})^d" />
@@ -121,6 +119,8 @@ Now that we know how many patches to sample, have a way to classify it, and run 
 a deblurring algorithm, we can finally run the program! Below is the result. One can see
 artifacts from the algorithm. At least to me, it appears the regions that are explicitly
 blurred were targeted more, though we already know it's not the best. Also It's apparent
-the deblur algorithm could be improved. To have made it this far in only two weeks seems commendable.
+the deblur algorithm could be improved.
 
 ![final image](output/img_de-blurred_covering_DSC00462.png "final 'deblurred' image")
+
+To have made it this far in only two weeks seems commendable. Additionally I was impressed with the improvement a covering number helped. It took 4 minutes to run the program with the lower bound number of patches; 1.5 hours to run the covering number of patches; extrapolating the upper bound would have taken about 42 days. A significant and worthwhile improvement I would say.
